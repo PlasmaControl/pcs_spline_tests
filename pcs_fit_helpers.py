@@ -1,9 +1,9 @@
 import numpy as np
 import ctypes
 
-def array_to_ctypes_1d(A):
+def array_to_ctypes_1d(A,desired_type=ctypes.c_double):
     # initialize properly sized array (to 0)
-    arr=(ctypes.c_double*len(A))()
+    arr=(desired_type*len(A))()
     for i in range(len(A)):
         arr[i]=A[i]
     return arr
@@ -45,3 +45,25 @@ def spline_eval(psinspline,mhatspline,num_cer_points,NFIT=121):
                )
     clib.spline_eval(NFIT, v, eval_arr, s, dummy)
     return ctypes_to_array_1d(v, NFIT)
+
+def calculate_mhat(psin, rot, p=0.5, dxMin=0.01):
+    N=len(psin)
+    clib=ctypes.cdll.LoadLibrary('./libspline.so')
+    clib.calculate_mhat.restype=ctypes.c_int
+    clib.calculate_mhat.argtypes=[ctypes.c_size_t, #n
+                                  (ctypes.c_float*N), #psin
+                                  (ctypes.c_float*N), #rot
+                                  ctypes.c_float, #dxMin
+                                  ctypes.c_float, #p
+                                  (ctypes.c_float*N), #mPsin
+                                  (ctypes.c_float*N) #mHat
+                                  ]
+    mPsin=(ctypes.c_float*N)()
+    mHat=(ctypes.c_float*N)()
+    psin=array_to_ctypes_1d(psin,desired_type=ctypes.c_float)
+    rot=array_to_ctypes_1d(rot,desired_type=ctypes.c_float)
+    clib.calculate_mhat(N,
+                        psin, rot,
+                        dxMin, p,
+                        mPsin, mHat)
+    return (ctypes_to_array_1d(mPsin,N),ctypes_to_array_1d(mHat,N))

@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import toksearch
 
-from pcs_fit_helpers import spline_eval
+from pcs_fit_helpers import spline_eval, calculate_mhat
 
 # BASIC TEST:
 psinspline=[0,0.01,0.6,0.8]
@@ -53,6 +53,22 @@ plt.scatter(psinspline,
             mhatspline,
             marker='x',label='data to fit',c='k')
 
+try:
+    import h5py
+    with h5py.File('/home/abbatej/tokamak-transport/data.h5') as f:
+        times=f['times']
+        time_ind=np.searchsorted(times,time)
+        psi=f['187076']['cer_rot_psi_raw_1d'][time_ind]
+        rot=f['187076']['cer_rot_raw_1d'][time_ind]*1e3
+        (mPsi,mHat)=calculate_mhat(psi,rot,p=0.5,dxMin=0.01)
+        mPsi=mPsi[:-1] # still not sure why the last index is always 0, should talk to ricardo (TODO)
+        mHat=mHat[:-1]
+        splined_rot=spline_eval(mPsi,mHat,len(mHat))
+        plt.scatter(psi, rot, label='raw rotation')
+        plt.scatter(mPsi, mHat, label='mHat rotation')
+        plt.plot(np.linspace(0,1.2,NFIT), splined_rot, label='splined rotation')
+except:
+    print("Use tmp.yaml for new_database_maker.py from PlasmaControl/data-fetching repo to read in raw CER rotation from the base shot associated with your sim")
 plt.title(f'Rotation fits at {nearest_available_time:.0f} ms, shot {shot}')
 plt.xlabel('psin')
 plt.legend()
